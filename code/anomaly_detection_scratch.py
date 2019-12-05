@@ -38,7 +38,8 @@ kdd_data_normal_numeric = kdd_data_normal.select_dtypes(include=['number'])
 X_train, X_test = train_test_split(kdd_data_normal_numeric, test_size=0.33, random_state=42)
 pca = PCA()
 fit = pca.fit(X_train)
-
+fit.explained_variance_
+fit.components_
 def get_empirical_distribution(X_train):
     """
     Get the empirical quantiles of the sum of ratio of principal component scores 
@@ -58,16 +59,18 @@ def get_empirical_distribution(X_train):
 
 ecdf = get_empirical_distribution(X_train)
 
-def get_ecdf(ss_prcomp_scores, val):
+def get_quantiles_from_ecdf(ss_prcomp_scores, val, num_major_comps):
     """
     Compare an observation's sum of ratio of principal component scores 
     and the eigenvalues using the observations from the training dataset to the empirical quantiles.
     """
-    ecdf = ECDF(ss_prcomp_scores)
-    quantile = ecdf(val)
-    return quantile
-
-print(get_ecdf(ss_prcomp_scores=ecdf, val=[50]))
+    major_comp_scores = ss_prcomp_scores[0:num_major_comps]
+    minor_comp_scores = ss_prcomp_scores[num_major_comps:]
+    ecdf_major = ECDF(major_comp_scores)
+    quantile_major = ecdf_major(val)
+    ecdf_minor = ECDF(minor_comp_scores)
+    quantile_minor = ecdf_minor(val)
+    return quantile_major, quantile_minor
 
 # Get the non-normal instances. Perform classification over these.
 # Bucket all different kinds of non-normal observations into one.
@@ -76,10 +79,24 @@ kdd_data_non_normal_numeric = kdd_data_non_normal.select_dtypes(include=['number
 Y = kdd_data_non_normal['class']
 X_train_nn, X_test_nn, Y_train_nn, Y_test_nn = train_test_split(kdd_data_non_normal_numeric, Y, test_size=0.33, random_state=42)
 prcomp_scores = get_empirical_distribution(X_test_nn)
-quantiles_scores = get_ecdf(ss_prcomp_scores=ecdf, val=prcomp_scores)
+quantile_major, quantile_minor = get_quantiles_from_ecdf(ss_prcomp_scores=ecdf, val=prcomp_scores, num_major_comps=5)
 
-anomalies_ = [True if i > 0.9899 else False for i in quantiles_scores ]
+anomalies_major = [True if i > 0.9899 else False for i in quantile_major]
+anomalies_minor = [True if i > 0.9899 else False for i in quantile_minor]
+
+anomalies_ = []
+for i in range(len(anomalies_major)):
+    if anomalies_major[i] == True:
+        anomalies_.append(True)
+    elif anomalies_minor[i] == True:
+        anomalies_.append(True)
+    else:
+        anomalies_.append(False)
+
 Y_true = [True for i in Y_test_nn]
 confusion_matrix(Y_true, anomalies_)
 precision_score(Y_true, anomalies_)
 recall_score(Y_true, anomalies_)
+
+
+
