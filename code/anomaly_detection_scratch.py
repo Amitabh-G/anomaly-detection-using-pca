@@ -5,10 +5,8 @@ Created on Wed Dec  4 12:44:46 2019
 @author: amitabh.gunjan
 """
 
-
 """
 Code for anomaly detection using PCA.
-
 	3) Perform PCA over the data.  
 	4) Use the anomaly detection logic to get the anomalies after doing PCA.
     5) Create a function to get the metrics related to the classification.
